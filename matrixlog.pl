@@ -145,6 +145,7 @@ multiply(A, B, R) :-
 %
 % A *lower triangular matrix* is a matrix where all entries above the main
 % diagonal are zero.
+% Currently only works on N,1 dimension B
 
 forsub(L, X, B) :-
   L = matrix(N,N,Lower),
@@ -181,6 +182,8 @@ subrec(Ts,N,[Bv|Bs],Acc,I,Xs):-
 %
 % An *upper triangular matrix* is a matrix where all entries below the main
 % diagonal are zero.
+% Currently only works on N,1 dimension B
+
 backsub(U, X, B) :-
   U= matrix(N,N,Upper),
   B = matrix(N,1,Belems),
@@ -198,18 +201,80 @@ backsub(U, X, B) :-
   X = matrix(N,1,Xelems),!.
 
 pivotize(_A,_P):- throw(todo). %TODO:
-%pivotize(A,P):-
-%  A = matrix(N,N,Elements),
-%  Size #= N*N,
-%  functor(Elements,elements,Size),
-%  eye(N,P0),
-%  P0 = matrix(N,N,Id),
-%  foreach((between(1,N,I)),)
-%  Pivots =.. [elements|],
-%  P = matrix(N,N,PList).
 
-lu(_A,_L,_U):- throw(todo). %TODO:
 
+%! lu(+A,-L,-U)
+% LU decomposition of A, such that A = LU
+% uses Doolittles method so not the most numerically stable
+% could also implement pivoting
+
+lu(A,L,U):-
+  A = matrix(N,N,As),
+  Size #= N*N,
+  functor(As,elements,Size),
+  functor(Lower,elements,Size),
+  functor(Upper,elements,Size),
+  lu_j(0,N,As,Lower,Upper),
+  L = matrix(N,N,Lower),
+  U = matrix(N,N,Upper),
+  multiply(L,U,A).
+
+nzeros(0,[]):-!.
+nzeros(N,[0|T]):- Next #= N +1, nzeros(Next,T).
+
+lu_j(N,N,_As,_Ls,_Us):-!.
+lu_j(J,N,As,Lower,Upper):-
+  Jplus #= J +1,
+  JJ #= Jplus + J*N,
+  setarg(JJ,Lower,1),
+  lu_i(0,Jplus,N,As,Lower,Upper),
+  lu_j(Jplus,N,As,Lower,Upper).
+
+lu_i(N,_J,N,_As,_Ls,_Us):-!.
+lu_i(I,J,N,As,Lower,Upper):-
+  Iplus #= I + 1,
+  Index #= J+I*N,
+  arg(Index,As,Av),
+  (I < J -> 
+    (lu_k(Iplus,Iplus,J,N,Lower,Upper,Sum),
+      ValUpper is Av - Sum,
+      setarg(Index,Upper,ValUpper));
+    (lu_k(J,Iplus,J,N,Lower,Upper,Sum),
+      JJ #= J+(J-1)*N,
+      arg(JJ,Upper,Ujj),
+      ValLower is (Av-Sum)/Ujj, 
+      setarg(Index,Lower,ValLower))),
+  lu_i(Iplus,J,N,As,Lower,Upper).
+
+lu_k(Stop,I,J,N,Lower,Upper,Sum):-lu_k(1,Stop,I,J,N,Lower,Upper,0,Sum).
+lu_k(K,K,_I,_J,_N,_Lower,_Upper,Acc,Acc):-!.
+lu_k(K,Stop,I,J,N,Lower,Upper,Acc,Sum):-
+  Kplus #= K + 1,
+  LIdx #= K+(I-1)*N,
+  UIdx #= J+(K-1)*N,
+  arg(LIdx,Lower,Lv),
+  arg(UIdx,Upper,Uv),
+  NextAcc is Acc + (Lv*Uv),
+  lu_k(Kplus,Stop,I,J,N,Lower,Upper,NextAcc,Sum).
+
+%! solve(+A,-X,+B)
+% Attempts to solve AX = B, by using LU factorization of A
+% forward substitution on LF = B, backwards substitution on UX = F
+solve(A,X,B):- 
+  A = matrix(N,N,As),
+  B = matrix(N,M,Bs),
+  SizeA #= N*N,
+  SizeB #= N*M,
+  functor(As,elements,SizeA),
+  functor(Bs,elements,SizeB),
+  lu(A,L,U),
+  forsub(L,F,B),
+  backsub(U,X,F).
+
+%! list0(+N,-L)
+% creates a list of n zeros
+list0(0,[]).
+list(N,[0|T]):- Next #= N - 1, list(Next,T).
 
 %%%%%%%%%
 % Tests %
@@ -383,6 +448,12 @@ test(backsub):- backsub(matrix(3,3,elements(6,5,4,0,3,2,0,0,1)),
 test(backsub):- assertion(not(backsub(matrix(3,3,elements(6,5,4,0,3,2,0,0,1)),
                       matrix(3,1,elements(-1.0,3.0,3.0)),
                       matrix(3,1,elements(3.0,3.0,1.0))))).
-
-
+test(lu):- lu(matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
+              matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
+              matrix(3,3,elements(1,0,0,0,1,0,0,0,1))).
+test(lu):- lu(matrix(3,3,elements(1,2,0,2,7,0,0,0,1)),
+              matrix(3,3,elements(1,0,0,2,1,0,0,0,1)),
+              matrix(3,3,elements(1,2,0,0,3,0,0,0,1))). 
+error(zero_divisor):-lu(matrix(2,2,elements(0,1,1,0)),L,U),
+              valid_matrix(L),valid_matrix(U). 
 :- end_tests(matrixlog).

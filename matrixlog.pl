@@ -59,7 +59,6 @@ eye(N, Matrix) :-
           I = J -> arg(Index, Elements, 1) ; arg(Index, Elements, 0)),
   Matrix = matrix(N, N, Elements).
 
-
 % T is the transpose of A.  In other words, T is A but with row and column
 % indices switched.
 t(A,T) :-
@@ -456,4 +455,5 @@ test(lu):- lu(matrix(3,3,elements(1,2,0,2,7,0,0,0,1)),
               matrix(3,3,elements(1,2,0,0,3,0,0,0,1))). 
 error(zero_divisor):-lu(matrix(2,2,elements(0,1,1,0)),L,U),
               valid_matrix(L),valid_matrix(U). 
+
 :- end_tests(matrixlog).

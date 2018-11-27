@@ -144,7 +144,6 @@ multiply(A, B, R) :-
 %
 % A *lower triangular matrix* is a matrix where all entries above the main
 % diagonal are zero.
-% Currently only works on N,1 dimension B
 
 forsub(L, X, B) :-
   L = matrix(N,N,Lower),
@@ -181,7 +180,6 @@ subrec(Ts,N,[Bv|Bs],Acc,I,Xs):-
 %
 % An *upper triangular matrix* is a matrix where all entries below the main
 % diagonal are zero.
-% Currently only works on N,1 dimension B
 
 backsub(U, X, B) :-
   U= matrix(N,N,Upper),
@@ -207,7 +205,7 @@ pivotize(_A,_P):- throw(todo). %TODO:
 % uses Doolittles method so not the most numerically stable
 % could also implement pivoting
 
-lu(A,L,U):-
+lu(A,L,U):- 
   A = matrix(N,N,As),
   Size #= N*N,
   functor(As,elements,Size),
@@ -216,10 +214,7 @@ lu(A,L,U):-
   lu_j(0,N,As,Lower,Upper),
   L = matrix(N,N,Lower),
   U = matrix(N,N,Upper),
-  multiply(L,U,A).
-
-nzeros(0,[]):-!.
-nzeros(N,[0|T]):- Next #= N +1, nzeros(Next,T).
+  multiply(L,U,A), !.
 
 lu_j(N,N,_As,_Ls,_Us):-!.
 lu_j(J,N,As,Lower,Upper):-
@@ -237,12 +232,14 @@ lu_i(I,J,N,As,Lower,Upper):-
   (I < J -> 
     (lu_k(Iplus,Iplus,J,N,Lower,Upper,Sum),
       ValUpper is Av - Sum,
-      setarg(Index,Upper,ValUpper));
+      setarg(Index,Upper,ValUpper),
+      (Iplus < J -> setarg(Index,Lower,0); true));
     (lu_k(J,Iplus,J,N,Lower,Upper,Sum),
       JJ #= J+(J-1)*N,
       arg(JJ,Upper,Ujj),
       ValLower is (Av-Sum)/Ujj, 
-      setarg(Index,Lower,ValLower))),
+      setarg(Index,Lower,ValLower),
+      setarg(Index,Upper,0))),
   lu_i(Iplus,J,N,As,Lower,Upper).
 
 lu_k(Stop,I,J,N,Lower,Upper,Sum):-lu_k(1,Stop,I,J,N,Lower,Upper,0,Sum).
@@ -270,10 +267,6 @@ solve(A,X,B):-
   forsub(L,F,B),
   backsub(U,X,F).
 
-%! list0(+N,-L)
-% creates a list of n zeros
-list0(0,[]).
-list(N,[0|T]):- Next #= N - 1, list(Next,T).
 
 %%%%%%%%%
 % Tests %
@@ -412,11 +405,11 @@ test(multiply_integer) :-
   assertion(R == matrix(2, 2, elements(-24, -67, -48, -136))).
 
 test(transpose):-
-  t(matrix(1,1,elements(2)),matrix(1,1,elements(2))).
+  assertion(t(matrix(1,1,elements(2)),matrix(1,1,elements(2)))).
 test(transpose):-
-  t(matrix(2,2,elements(1,2,3,4)),matrix(2,2,elements(1,3,2,4))).
+  A=matrix(2,2,elements(1,2,3,4)),T=matrix(2,2,(1,3,2,4)),assert(t(A,T)).
 test(transpose):-
-  t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6))).
+  assertion(t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6)))).
 
 test(add):-
   ones(3,3,One), 
@@ -428,9 +421,10 @@ test(add):-
   add(matrix(2,2,elements(0.0345,0,0,2.5432)),matrix(2,2,elements(0.9655,2.0,3.0,1.4568)),R),
   assertion(R == matrix(2,2,elements(1.0,2.0,3.0,4.0))).
 
-test(forsub):- forsub(matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
-                      matrix(3,1,elements(1.0,2.0,3.0)),
-                      matrix(3,1,elements(1.0,2.0,3.0))).
+test(forsub):-  A = matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
+                B = matrix(3,1,elements(1.0,2.0,3.0)),
+                X = matrix(3,1,elements(1.0,2.0,3.0)),
+                assertion(forsub(A,X,B)).
 test(forsub):- forsub(matrix(3,3,elements(1.0,0,0,2.0,3.0,0,4.0,5.0,6.0)),
                       matrix(3,1,elements(3.0,-1.0,-1.0)),
                       matrix(3,1,elements(3.0,3.0,1.0))).
@@ -438,22 +432,35 @@ test(forsub):- assertion(not(forsub(matrix(3,3,elements(1.0,0,0,2.0,3.0,0,4.0,5.
                       matrix(3,1,elements(-1.0,3.0,3.0)),
                       matrix(3,1,elements(3.0,3.0,1.0))))).
 
-test(backsub):- backsub(matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
-                      matrix(3,1,elements(1.0,2.0,3.0)),
-                      matrix(3,1,elements(1.0,2.0,3.0))).
+test(backsub):- A = matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
+                B = matrix(3,1,elements(1.0,2.0,3.0)),
+                X = matrix(3,1,elements(1.0,2.0,3.0)),
+                assertion(backsub(A,X,B)).
 test(backsub):- backsub(matrix(3,3,elements(6,5,4,0,3,2,0,0,1)),
                       matrix(3,1,elements(-2.0,-2.0,6.0)),
                       matrix(3,1,elements(2.0,6.0,6.0))).
 test(backsub):- assertion(not(backsub(matrix(3,3,elements(6,5,4,0,3,2,0,0,1)),
                       matrix(3,1,elements(-1.0,3.0,3.0)),
                       matrix(3,1,elements(3.0,3.0,1.0))))).
-test(lu):- lu(matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
-              matrix(3,3,elements(1,0,0,0,1,0,0,0,1)),
-              matrix(3,3,elements(1,0,0,0,1,0,0,0,1))).
-test(lu):- lu(matrix(3,3,elements(1,2,0,2,7,0,0,0,1)),
-              matrix(3,3,elements(1,0,0,2,1,0,0,0,1)),
-              matrix(3,3,elements(1,2,0,0,3,0,0,0,1))). 
+
+test(lu):-  A = matrix(3,3,elements(1,0,0,0,2,0,0,0,3)), 
+            L = matrix(3,3,elements(1,0,0,0,1,0,0,0,1)), 
+            U = matrix(3,3,elements(1,0,0,0,2,0,0,0,3)), 
+            assertion(lu(A,L,U)). 
+test(lu):-  A = matrix(3,3,elements(1,2,0,2,7,0,0,0,1)),
+            L = matrix(3,3,elements(1,0,0,2,1,0,0,0,1)),
+            lu(A,L,U),
+            assertion(U == matrix(3,3,elements(1,2,0,0,3,0,0,0,1))). 
+
+test(solve):- solve(matrix(1,1,elements(1)),matrix(1,1,elements(2)),matrix(1,1,elements(2))).
+test(solve):- A = matrix(2,2,elements(2,0,0,2)),
+              B = matrix(2,1,elements(2,4)),
+              X = matrix(2,1,elements(1,2)),
+              assertion(solve(A,X,B)).
+
 error(zero_divisor):-lu(matrix(2,2,elements(0,1,1,0)),L,U),
               valid_matrix(L),valid_matrix(U). 
-
+error(zero_divisor):- solve(matrix(2,2,elements(0,1,1,0)),
+                      matrix(2,1,elements(2,1)),
+                      matrix(2,1,elements(1,2))).
 :- end_tests(matrixlog).

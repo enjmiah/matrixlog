@@ -405,15 +405,15 @@ test(multiply_integer) :-
            matrix(3, 2, elements(-1, 1, 2, -4, -9, -20)), R),
   assertion(R == matrix(2, 2, elements(-24, -67, -48, -136))).
 
-test(transpose) :-
+test(t) :-
   not(t( matrix(2,2,elements(1,2,1,1)), matrix(2,2,elements(1,2,1,1)) )).
-test(transpose) :-
-  A=matrix(1,1,elements(1)),t(A,matrix(1,1,elements(1))).
-test(transpose) :-
-  A=matrix(2,2,elements(1.0,2.0,3.0,4.0)),t(A,T),T=matrix(2,2,elements(1.0,3.0,2.0,4.0)).
-test(transpose) :-
+test(t, [nondet]) :-
+  A=matrix(1,1,elements(1)),t(A,T),T = matrix(1,1,elements(N)),assertion(N=:=1).
+test(t, [nondet]) :-
+  A=matrix(2,2,elements(1.0,2.0,3.0,4.0)),t(A,T),assertion(T= matrix(2,2,elements(1.0,3.0,2.0,4.0))).
+test(t) :-
   not((A=matrix(2,2,elements(1.0,2.0,3.0,4.0)),t(A,T),T=matrix(2,2,elements(1.0,3.0,2.0,5.0)))).
-test(transpose) :-
+test(t) :-
   t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6))).
 
 test(add):-

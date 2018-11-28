@@ -405,11 +405,11 @@ test(multiply_integer) :-
   assertion(R == matrix(2, 2, elements(-24, -67, -48, -136))).
 
 test(transpose):-
-  assertion(t(matrix(1,1,elements(2)),matrix(1,1,elements(2)))).
+  assert(t(matrix(1,1,elements(2)),matrix(1,1,elements(2)))).
 test(transpose):-
   A=matrix(2,2,elements(1,2,3,4)),T=matrix(2,2,(1,3,2,4)),assert(t(A,T)).
 test(transpose):-
-  assertion(t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6)))).
+  assert(t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6)))).
 
 test(add):-
   ones(3,3,One), 

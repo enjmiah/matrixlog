@@ -59,9 +59,10 @@ eye(N, Matrix) :-
           I = J -> arg(Index, Elements, 1) ; arg(Index, Elements, 0)),
   Matrix = matrix(N, N, Elements).
 
+%! t(+A,-T)
 % T is the transpose of A.  In other words, T is A but with row and column
 % indices switched.
-t(A,T) :-
+t(A,T) :-!,
   A = matrix(M,N,Elements),
   Size #= M*N,
   functor(Elements,elements,Size),
@@ -404,12 +405,16 @@ test(multiply_integer) :-
            matrix(3, 2, elements(-1, 1, 2, -4, -9, -20)), R),
   assertion(R == matrix(2, 2, elements(-24, -67, -48, -136))).
 
-test(transpose):-
-  assert(t(matrix(1,1,elements(2)),matrix(1,1,elements(2)))).
-test(transpose):-
-  A=matrix(2,2,elements(1,2,3,4)),T=matrix(2,2,(1,3,2,4)),assert(t(A,T)).
-test(transpose):-
-  assert(t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6)))).
+test(transpose) :-
+  not(t( matrix(2,2,elements(1,2,1,1)), matrix(2,2,elements(1,2,1,1)) )).
+test(transpose) :-
+  A=matrix(1,1,elements(1)),t(A,matrix(1,1,elements(1))).
+test(transpose) :-
+  A=matrix(2,2,elements(1.0,2.0,3.0,4.0)),t(A,T),T=matrix(2,2,elements(1.0,3.0,2.0,4.0)).
+test(transpose) :-
+  not((A=matrix(2,2,elements(1.0,2.0,3.0,4.0)),t(A,T),T=matrix(2,2,elements(1.0,3.0,2.0,5.0)))).
+test(transpose) :-
+  t(matrix(2,3,elements(1,2,3,4,5,6)),matrix(3,2,elements(1,4,2,5,3,6))).
 
 test(add):-
   ones(3,3,One), 

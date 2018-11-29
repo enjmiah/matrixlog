@@ -258,29 +258,29 @@ lu(A,L,U) :-
   functor(AElements,elements,Size),
   functor(LElements,elements,Size),
   functor(UElements,elements,Size),
-  lu_row(0, N, AElements, LElements, UElements),
+  lu_helper(0, N, AElements, LElements, UElements),
   L = matrix(N, N, LElements),
   U = matrix(N, N, UElements).
 
-% Compute a single row of Lower and Upper.
-lu_row(N, N, _As, _Ls,   _Us) :- !.
-lu_row(J, N, As,  Lower, Upper) :-
+% Helper for iterating over the rows of L and U
+lu_helper(N, N, _As, _Ls,   _Us) :- !.
+lu_helper(J, N, As,  Lower, Upper) :-
   Jplus #= J + 1,
   IndexJJ #= Jplus + J * N,
   setarg(IndexJJ, Lower, 1), % set L[Jplus,Jplus] = 1
-  lu_element(0,Jplus,N,As,Lower,Upper),
-  lu_row(Jplus,N,As,Lower,Upper).
+  lu_row(0,Jplus,N,As,Lower,Upper),
+  lu_helper(Jplus,N,As,Lower,Upper).
 
-% Compute a single element of Lower and Upper.
-lu_element(N, _J, N, _As, _Ls,   _Us) :- !.
-lu_element(I, J,  N, As,  Lower, Upper) :-
+% Compute a single row of Lower and Upper.
+lu_row(N, _J, N, _As, _Ls,   _Us) :- !.
+lu_row(I, J,  N, As,  Lower, Upper) :-
   Iplus #= I + 1,
   Index #= J + I * N,
   arg(Index,As,Av),
   % If I < J...
   (I < J ->
      % Compute the value of U[Iplus, J]
-     (sum_l_ik_u_kj(Iplus,Iplus,J,N,Lower,Upper,Sum),
+     (lu_row_helper(Iplus,Iplus,J,N,Lower,Upper,Sum),
       ValUpper is Av - Sum,
       setarg(Index,Upper,ValUpper),
       % Zero out the corresponding value of L if necessary
@@ -289,28 +289,34 @@ lu_element(I, J,  N, As,  Lower, Upper) :-
          setarg(Index,Lower,0);
          true));
      % Otherwise, compute the value of Lower[Iplus, J]
-     (sum_l_ik_u_kj(J,Iplus,J,N,Lower,Upper,Sum),
+     (lu_row_helper(J,Iplus,J,N,Lower,Upper,Sum),
       JJ #= J+(J-1)*N,
       arg(JJ,Upper,Ujj),
       ValLower is (Av-Sum)/Ujj,
       setarg(Index,Lower,ValLower),
       % and zero out the corresponding value of L
       setarg(Index,Upper,0))),
-  lu_element(Iplus,J,N,As,Lower,Upper).
+  lu_row(Iplus,J,N,As,Lower,Upper).
 
-% Computes sum of Lower[I, K] * Upper[K, J] for K = 1..Stop-1
-sum_l_ik_u_kj(Stop,I,J,N,Lower,Upper,Sum) :-
-  sum_l_ik_u_kj(1,Stop,I,J,N,Lower,Upper,0,Sum).
+% Computes sum of Lower[I, K] * Upper[K, J] for K = 1..Stop-1.
+%
+% This sum is used for computing U and L:
+%
+%     U[I,J] = A[I,J] - Sum             for upper triangular half of U
+%     L[I,J] = (A[I,J] - Sum) / U[J,J]  for lower triangular half of L, I \= J
+%            = 1                        I = J
+lu_row_helper(Stop,I,J,N,Lower,Upper,Sum) :-
+  lu_row_helper(1,Stop,I,J,N,Lower,Upper,0,Sum).
 
-sum_l_ik_u_kj(K, K,    _I, _J, _N, _Lower, _Upper, Sum, Sum) :- !.
-sum_l_ik_u_kj(K, Stop, I,  J,  N,  Lower,  Upper,  Acc, Sum) :-
+lu_row_helper(K, K,    _I, _J, _N, _Lower, _Upper, Sum, Sum) :- !.
+lu_row_helper(K, Stop, I,  J,  N,  Lower,  Upper,  Acc, Sum) :-
   Kplus #= K + 1,
   LIdx #= K+(I-1)*N,
   UIdx #= J+(K-1)*N,
   arg(LIdx,Lower,Lv), % Lv = L[I, K]
   arg(UIdx,Upper,Uv), % Uv = U[K, J]
   NextAcc is Acc + (Lv*Uv),
-  sum_l_ik_u_kj(Kplus,Stop,I,J,N,Lower,Upper,NextAcc,Sum).
+  lu_row_helper(Kplus,Stop,I,J,N,Lower,Upper,NextAcc,Sum).
 
 
 %! solve(+A, ?X, +B)
